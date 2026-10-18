@@ -1,0 +1,46 @@
+{
+  "name": "loadscope",
+  "version": "0.1.0",
+  "description": "Load tester with breaking-point finder, CI regression gate, and PDF reports",
+  "type": "module",
+  "bin": {
+    "loadscope": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test-server": "node --loader tsx test-server/index.ts",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "log-update": "^6.0.0",
+    "pdfkit": "^0.15.0",
+    "picocolors": "^1.1.0",
+    "undici": "^6.19.0",
+    "yaml": "^2.4.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/pdfkit": "^0.13.0",
+    "hdr-histogram-js": "^3.0.0",
+    "pdf-parse": "^1.1.1",
+    "tsup": "^8.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0"
+  }
+}
