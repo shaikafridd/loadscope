@@ -17,6 +17,28 @@ export function createTestServer() {
       return;
     }
 
+    // Dynamic capacity bottleneck simulation: /capacity?limit=15
+    if (pathname === "/capacity") {
+      const limit = Number(url.searchParams.get("limit") ?? 15);
+      const isOverloaded = (server as any)._activeRequests > limit;
+      const delay = isOverloaded ? Number(url.searchParams.get("slow") ?? 200) : 5;
+      (server as any)._activeRequests = ((server as any)._activeRequests || 0) + 1;
+
+      setTimeout(() => {
+        (server as any)._activeRequests = Math.max(0, ((server as any)._activeRequests || 1) - 1);
+        if (!res.writableEnded) {
+          if (isOverloaded && url.searchParams.get("fail") === "503") {
+            res.writeHead(503, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: "Capacity Overloaded", limit }));
+          } else {
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ status: "ok", limit, delay, overloaded: isOverloaded }));
+          }
+        }
+      }, delay);
+      return;
+    }
+
     // Controllable fixed latency: /delay/:ms or /delay?ms=100
     if (pathname.startsWith("/delay")) {
       const parts = pathname.split("/").filter(Boolean);

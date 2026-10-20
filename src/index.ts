@@ -14,6 +14,9 @@ export { executeOpenModel } from "./core/open-model.js";
 export { executeMultiThreaded } from "./core/multi-runner.js";
 export { ArrivalScheduler } from "./core/scheduler.js";
 export { recordWithCorrection, extractDistribution, computeQueueDelay } from "./stats/co-corrector.js";
+export { runBreakingPoint } from "./modes/breaking-point.js";
+export { formatBreakpointTerminalReport, printBreakpointTerminalReport, formatStepRow } from "./report/breakpoint-terminal.js";
+export { formatBreakpointJsonReport, formatBreakpointCsvReport } from "./report/export.js";
 
 /**
  * Programmatic API to execute a load test run.

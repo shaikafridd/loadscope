@@ -55,3 +55,63 @@ export function formatCsvReport(summary: RunSummary): string {
 
   return lines.join("\n");
 }
+
+/**
+ * Serializes a BreakpointSummary to formatted JSON string.
+ */
+export function formatBreakpointJsonReport(summary: import("../types.js").BreakpointSummary): string {
+  return JSON.stringify(summary, null, 2);
+}
+
+/**
+ * Formats a BreakpointSummary and all its steps into CSV format.
+ */
+export function formatBreakpointCsvReport(summary: import("../types.js").BreakpointSummary): string {
+  const lines: string[] = [];
+
+  // Metadata
+  lines.push("# LoadScope Breaking-Point Summary");
+  lines.push("target,mode,start,max,step,step_duration_sec,breaking_point,safe_capacity,breached,breach_reason");
+  lines.push(
+    [
+      `"${summary.target}"`,
+      summary.mode,
+      summary.start,
+      summary.max,
+      summary.step,
+      summary.stepDurationSec,
+      summary.breakingPoint !== undefined ? summary.breakingPoint : "none",
+      summary.safeCapacity !== undefined ? summary.safeCapacity : "none",
+      summary.breached,
+      summary.breachReason ? `"${summary.breachReason}"` : "none",
+    ].join(",")
+  );
+
+  lines.push("");
+
+  // Steps
+  lines.push("# Step Progression");
+  lines.push("step,is_refinement,load,rps,p50_ms,p95_ms,p99_ms,error_rate,total_requests,network_errors,http_errors,status,breach_reason");
+  const allSteps = [...summary.steps, ...summary.refinementSteps];
+  for (const s of allSteps) {
+    lines.push(
+      [
+        s.stepIndex,
+        s.isRefinement ? "true" : "false",
+        s.load,
+        s.rps.toFixed(2),
+        s.p50.toFixed(2),
+        s.p95.toFixed(2),
+        s.p99.toFixed(2),
+        (s.errorRate * 100).toFixed(2) + "%",
+        s.totalRequests,
+        s.networkErrors,
+        s.httpErrors,
+        s.status,
+        s.breachReason ? `"${s.breachReason}"` : "",
+      ].join(",")
+    );
+  }
+
+  return lines.join("\n");
+}

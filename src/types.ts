@@ -127,3 +127,67 @@ export interface RunSummary {
   ttfb?: LatencyDistribution;
   scheduleDriftMs?: number;
 }
+
+export interface BreakpointLimits {
+  maxP95?: number; // ms
+  maxP99?: number; // ms
+  maxErrorRate: number; // 0..1 (e.g. 0.01 for 1%)
+}
+
+export interface BreakpointStepResult {
+  stepIndex: number;
+  load: number; // concurrency count or target RPS
+  rps: number;
+  p50: number;
+  p95: number;
+  p99: number;
+  errorRate: number;
+  totalRequests: number;
+  networkErrors: number;
+  httpErrors: number;
+  status: "PASS" | "BREACH";
+  breachReason?: string;
+  isRefinement?: boolean;
+  summary: RunSummary;
+}
+
+export interface BreakpointSummary {
+  target: string;
+  mode: "concurrency" | "rate";
+  start: number;
+  max: number;
+  step: number;
+  stepDurationSec: number;
+  breakingPoint?: number;
+  safeCapacity?: number;
+  breached: boolean;
+  breachReason?: string;
+  steps: BreakpointStepResult[];
+  refinementSteps: BreakpointStepResult[];
+  limits: BreakpointLimits;
+}
+
+export interface BreakpointOptions {
+  url: string;
+  mode?: "concurrency" | "rate";
+  start?: number;
+  max?: number;
+  step?: number;
+  stepDuration?: string | number; // e.g. "5s" or 5
+  maxP95?: number; // ms, default 300
+  maxP99?: number; // ms
+  maxErrorRate?: number; // 0..1, default 0.01
+  refine?: boolean; // enable binary search refinement, default true
+  tolerance?: number; // binary search convergence threshold, default 2
+  workers?: number | "auto";
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
+  timeout?: number | string;
+  honest?: boolean;
+  distribution?: "uniform" | "poisson";
+  json?: string | boolean;
+  csv?: string | boolean;
+  onStepStart?: (stepNumber: number, load: number, isRefinement?: boolean) => void;
+  onStepComplete?: (result: BreakpointStepResult) => void;
+}
