@@ -16,7 +16,19 @@ export { ArrivalScheduler } from "./core/scheduler.js";
 export { recordWithCorrection, extractDistribution, computeQueueDelay } from "./stats/co-corrector.js";
 export { runBreakingPoint } from "./modes/breaking-point.js";
 export { formatBreakpointTerminalReport, printBreakpointTerminalReport, formatStepRow } from "./report/breakpoint-terminal.js";
-export { formatBreakpointJsonReport, formatBreakpointCsvReport } from "./report/export.js";
+export {
+  formatBreakpointJsonReport,
+  formatBreakpointCsvReport,
+  formatComparisonJsonReport,
+  formatComparisonCsvReport,
+} from "./report/export.js";
+export { saveBaseline, loadBaseline, compareRuns } from "./modes/regression-gate.js";
+export {
+  formatComparisonTerminalReport,
+  printComparisonTerminalReport,
+  generateGithubStepSummary,
+  writeGithubStepSummary,
+} from "./report/compare-terminal.js";
 
 /**
  * Programmatic API to execute a load test run.

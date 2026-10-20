@@ -115,3 +115,50 @@ export function formatBreakpointCsvReport(summary: import("../types.js").Breakpo
 
   return lines.join("\n");
 }
+
+/**
+ * Serializes a ComparisonSummary to formatted JSON string.
+ */
+export function formatComparisonJsonReport(summary: import("../types.js").ComparisonSummary): string {
+  return JSON.stringify(summary, null, 2);
+}
+
+/**
+ * Formats a ComparisonSummary into CSV format.
+ */
+export function formatComparisonCsvReport(summary: import("../types.js").ComparisonSummary): string {
+  const lines: string[] = [];
+
+  lines.push("# LoadScope CI Regression Gate Comparison");
+  lines.push("target,passed,regressions_count,improvements_count");
+  lines.push(
+    [
+      `"${summary.currentTarget}"`,
+      summary.passed,
+      summary.regressions.length,
+      summary.improvements.length,
+    ].join(",")
+  );
+
+  lines.push("");
+
+  lines.push("# Metrics Comparison");
+  lines.push("metric,baseline,current,delta,delta_pct,unit,status,violation,message");
+  for (const m of summary.metrics) {
+    lines.push(
+      [
+        `"${m.name}"`,
+        m.baseline.toFixed(2),
+        m.current.toFixed(2),
+        m.delta.toFixed(2),
+        m.deltaPct.toFixed(2) + "%",
+        `"${m.unit}"`,
+        m.status,
+        m.thresholdViolation ? "true" : "false",
+        m.message ? `"${m.message}"` : "",
+      ].join(",")
+    );
+  }
+
+  return lines.join("\n");
+}

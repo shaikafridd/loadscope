@@ -20,6 +20,12 @@ export interface RunOptions {
   pdf?: string;
   aiReport?: string;
   aiDryRun?: boolean;
+  baseline?: string;
+  saveBaseline?: string | boolean;
+  maxP95Increase?: number;
+  maxRpsDrop?: number;
+  maxP99Increase?: number;
+  maxErrors?: number;
 }
 
 export interface LatencyPoint {
@@ -190,4 +196,54 @@ export interface BreakpointOptions {
   csv?: string | boolean;
   onStepStart?: (stepNumber: number, load: number, isRefinement?: boolean) => void;
   onStepComplete?: (result: BreakpointStepResult) => void;
+}
+
+export interface GateThresholds {
+  maxP95IncreasePct: number; // e.g. 10 for 10%
+  maxRpsDropPct: number; // e.g. 5 for 5%
+  maxP99IncreasePct?: number; // e.g. 15 for 15%
+  maxErrorRate?: number; // e.g. 0.01 for 1%
+}
+
+export interface BaselineData {
+  timestamp: string;
+  target: string;
+  concurrency?: number;
+  rate?: number;
+  durationSec: number;
+  rps: number;
+  totalRequests: number;
+  p50: number;
+  p90: number;
+  p95: number;
+  p99: number;
+  errorRate: number;
+  networkErrors: number;
+  httpErrors: number;
+  commitHash?: string;
+}
+
+export interface ComparisonMetric {
+  name: string;
+  baseline: number;
+  current: number;
+  delta: number;
+  deltaPct: number;
+  unit: string;
+  isHigherBetter: boolean;
+  status: "PASS" | "IMPROVEMENT" | "REGRESSION";
+  threshold?: number;
+  thresholdViolation?: boolean;
+  message?: string;
+}
+
+export interface ComparisonSummary {
+  passed: boolean;
+  baselineTarget: string;
+  currentTarget: string;
+  baselineTimestamp?: string;
+  metrics: ComparisonMetric[];
+  regressions: ComparisonMetric[];
+  improvements: ComparisonMetric[];
+  thresholds: GateThresholds;
 }
