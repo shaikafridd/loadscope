@@ -10,8 +10,15 @@ import {
   formatCsvReport,
   formatBreakpointJsonReport,
   formatBreakpointCsvReport,
+  formatComparisonJsonReport,
+  formatComparisonCsvReport,
 } from "./report/export.js";
 import { parseHeaders } from "./config/schema.js";
+import { saveBaseline, loadBaseline, compareRuns } from "./modes/regression-gate.js";
+import {
+  printComparisonTerminalReport,
+  writeGithubStepSummary,
+} from "./report/compare-terminal.js";
 
 const program = new Command();
 
@@ -124,6 +131,60 @@ program
     }
   });
 
+// Subcommand: compare <current> <baseline>
+program
+  .command("compare <current> <baseline>")
+  .description("Compare two performance JSON reports against regression tolerances")
+  .option("--max-p95-increase <pct>", "Allowable percentage increase in p95 latency", "10")
+  .option("--max-rps-drop <pct>", "Allowable percentage drop in throughput", "5")
+  .option("--max-p99-increase <pct>", "Allowable percentage increase in p99 latency")
+  .option("--max-errors <pct>", "Max error rate percentage before regression (e.g. 1.0)", "1.0")
+  .option("--json [path]", "Export machine-readable comparison JSON (to path or stdout)")
+  .option("--csv [path]", "Export machine-readable comparison CSV (to path or stdout)")
+  .action(async (currentPath, baselinePath, options) => {
+    try {
+      const isSilentStdout = options.json === true || options.csv === true;
+
+      const currentRaw = JSON.parse(await fs.readFile(currentPath, "utf-8"));
+      const baselineRaw = JSON.parse(await fs.readFile(baselinePath, "utf-8"));
+
+      const comparison = compareRuns(currentRaw, baselineRaw, {
+        maxP95IncreasePct: parseFloat(options.maxP95Increase),
+        maxRpsDropPct: parseFloat(options.maxRpsDrop),
+        maxP99IncreasePct: options.maxP99Increase ? parseFloat(options.maxP99Increase) : undefined,
+        maxErrorRate: options.maxErrors ? parseFloat(options.maxErrors) / 100 : 0.01,
+      });
+
+      if (typeof options.json === "string") {
+        await fs.writeFile(options.json, formatComparisonJsonReport(comparison), "utf-8");
+        console.log(picocolors.green(`\n📄 Saved comparison JSON to: ${options.json}`));
+      } else if (options.json === true) {
+        console.log(formatComparisonJsonReport(comparison));
+      }
+
+      if (typeof options.csv === "string") {
+        await fs.writeFile(options.csv, formatComparisonCsvReport(comparison), "utf-8");
+        console.log(picocolors.green(`\n📊 Saved comparison CSV to: ${options.csv}`));
+      } else if (options.csv === true) {
+        console.log(formatComparisonCsvReport(comparison));
+      }
+
+      if (!isSilentStdout) {
+        printComparisonTerminalReport(comparison);
+      }
+
+      await writeGithubStepSummary(comparison);
+
+      if (!comparison.passed) {
+        process.exit(1);
+      }
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error("\n" + picocolors.red(`❌ LoadScope compare failed: ${errorMsg}\n`));
+      process.exit(1);
+    }
+  });
+
 // Root default command: loadscope [options]
 program
   .option("-u, --url <url>", "Target URL to test (e.g. http://localhost:3000)")
@@ -151,6 +212,11 @@ program
   .option("--max-p95 <ms>", "Max p95 latency before breach (ms)", "300")
   .option("--max-p99 <ms>", "Max p99 latency before breach (ms)")
   .option("--max-errors <pct>", "Max error rate percentage before breach (e.g. 1.0)", "1.0")
+  .option("--baseline <path>", "Compare test results against a baseline JSON file and fail on regression")
+  .option("--save-baseline [path]", "Save the current test run as a baseline file (default: loadscope-baseline.json)")
+  .option("--max-p95-increase <pct>", "Allowable percentage increase in p95 latency for baseline comparison", "10")
+  .option("--max-rps-drop <pct>", "Allowable percentage drop in throughput for baseline comparison", "5")
+  .option("--max-p99-increase <pct>", "Allowable percentage increase in p99 latency for baseline comparison")
   .option("--json [path]", "Export machine-readable JSON summary report (to path or stdout)")
   .option("--csv [path]", "Export machine-readable CSV summary and time-series report (to path or stdout)")
   .option("--pdf <path>", "Generate a PDF report at the specified path")
@@ -268,6 +334,42 @@ program
       // Default terminal report when not piping raw JSON/CSV to stdout
       if (!isSilentStdout) {
         printTerminalReport(summary);
+      }
+
+      // Phase 5: Baseline Saving
+      if (options.saveBaseline) {
+        const baselinePath =
+          typeof options.saveBaseline === "string"
+            ? options.saveBaseline
+            : "loadscope-baseline.json";
+        const savedTo = await saveBaseline(summary, baselinePath, {
+          concurrency: parseInt(options.concurrency, 10),
+          rate: options.rate ? parseFloat(options.rate) : undefined,
+        });
+        if (!isSilentStdout) {
+          console.log(picocolors.green(`\n💾 Saved performance baseline to: ${savedTo}`));
+        }
+      }
+
+      // Phase 5: CI Regression Gate Comparison
+      if (options.baseline) {
+        const baseline = await loadBaseline(options.baseline);
+        const comparison = compareRuns(summary, baseline, {
+          maxP95IncreasePct: parseFloat(options.maxP95Increase || "10"),
+          maxRpsDropPct: parseFloat(options.maxRpsDrop || "5"),
+          maxP99IncreasePct: options.maxP99Increase ? parseFloat(options.maxP99Increase) : undefined,
+          maxErrorRate: options.maxErrors ? parseFloat(options.maxErrors) / 100 : 0.01,
+        });
+
+        if (!isSilentStdout) {
+          printComparisonTerminalReport(comparison);
+        }
+
+        await writeGithubStepSummary(comparison);
+
+        if (!comparison.passed) {
+          process.exit(1);
+        }
       }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
