@@ -20,6 +20,9 @@ program
   .option("-H, --header <headers...>", "Custom HTTP header(s) (e.g. -H 'Authorization: Bearer token')")
   .option("-b, --body <body>", "HTTP request body")
   .option("-r, --rate <number>", "Requests per second (open arrival model)")
+  .option("--distribution <distribution>", "Arrival process distribution ('uniform' or 'poisson')", "uniform")
+  .option("--honest", "Enable Gil Tene Coordinated Omission correction")
+  .option("--ttfb", "Track Time-To-First-Byte (TTFB) latency breakdown")
   .option("-w, --warmup <duration>", "Warmup duration before recording metrics (e.g. 2s)")
   .option("-W, --workers <number|auto>", "Number of worker threads for multi-core scaling (default: 1)")
   .option("--timeout <duration>", "Per-request timeout (e.g. 5s, 500ms)", "10s")
@@ -38,11 +41,14 @@ program
 
       if (!isSilentStdout) {
         console.log(picocolors.cyan(`\n🚀 Initializing LoadScope runner against ${picocolors.bold(options.url)}...`));
-        const modeDesc = options.rate || options.mode === "open" ? `Open (${options.rate ?? 50} req/s)` : `Closed (${options.concurrency} conn)`;
+        const modeDesc = options.rate || options.mode === "open"
+          ? `Open (${options.distribution.toUpperCase()} ${options.rate ?? 50} req/s)`
+          : `Closed (${options.concurrency} conn)`;
         const workersDesc = options.workers ? ` | Workers: ${options.workers}` : "";
+        const honestDesc = options.honest ? " | Honest CO: ON" : "";
         console.log(
           picocolors.dim(
-            `   Mode: ${modeDesc}${workersDesc} | Duration: ${options.duration} | Method: ${options.method.toUpperCase()}`
+            `   Mode: ${modeDesc}${workersDesc}${honestDesc} | Duration: ${options.duration} | Method: ${options.method.toUpperCase()}`
           )
         );
       }
@@ -57,6 +63,9 @@ program
         headers,
         body: options.body,
         rate: options.rate ? parseFloat(options.rate) : undefined,
+        distribution: options.distribution,
+        honest: options.honest,
+        ttfb: options.ttfb,
         warmup: options.warmup,
         timeout: options.timeout,
         rampUp: options.rampUp,
@@ -70,6 +79,7 @@ program
         aiDryRun: options.aiDryRun,
       });
 
+      // Handle machine-readable JSON output
       if (typeof options.json === "string") {
         await fs.writeFile(options.json, formatJsonReport(summary), "utf-8");
         console.log(picocolors.green(`\n📄 Saved JSON report to: ${options.json}`));
@@ -77,6 +87,7 @@ program
         console.log(formatJsonReport(summary));
       }
 
+      // Handle machine-readable CSV output
       if (typeof options.csv === "string") {
         await fs.writeFile(options.csv, formatCsvReport(summary), "utf-8");
         console.log(picocolors.green(`\n📊 Saved CSV report to: ${options.csv}`));
@@ -84,6 +95,7 @@ program
         console.log(formatCsvReport(summary));
       }
 
+      // Default terminal report when not piping raw JSON/CSV to stdout
       if (!isSilentStdout) {
         printTerminalReport(summary);
       }

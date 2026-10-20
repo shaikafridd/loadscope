@@ -83,6 +83,9 @@ export const RunOptionsSchema = z.object({
   warmup: z.union([z.string(), z.number()]).optional().transform((v) => (v ? parseDurationToSeconds(v) : 0)),
   rampUp: z.union([z.string(), z.number()]).optional().transform((v) => (v ? parseDurationToSeconds(v) : 0)),
   mode: z.enum(["closed", "open"]).optional(),
+  distribution: z.enum(["uniform", "poisson"]).default("uniform"),
+  honest: z.boolean().default(false),
+  ttfb: z.boolean().default(false),
   workers: z.union([z.coerce.number().int().min(1), z.literal("auto")]).default(1),
   dashboard: z.boolean().default(true),
   json: z.union([z.string(), z.boolean()]).optional(),
@@ -98,6 +101,7 @@ export type ValidatedRunOptions = z.infer<typeof RunOptionsSchema>;
  * Validate and normalize run options.
  */
 export function validateRunOptions(raw: Partial<RunOptions>): ValidatedRunOptions {
+  // Normalize headers if an array was passed via CLI flags
   let headers = raw.headers;
   if (Array.isArray(headers)) {
     headers = parseHeaders(headers as unknown as string[]);

@@ -3,6 +3,9 @@ export interface RunOptions {
   duration?: number; // seconds
   concurrency?: number;
   rate?: number; // requests per second for open model
+  distribution?: "uniform" | "poisson";
+  honest?: boolean; // enable Coordinated Omission correction
+  ttfb?: boolean; // track Time-To-First-Byte
   method?: string;
   headers?: Record<string, string>;
   body?: string;
@@ -24,6 +27,16 @@ export interface LatencyPoint {
   p95: number;
 }
 
+export interface LatencyDistribution {
+  p50: number; // in milliseconds
+  p90: number;
+  p95: number;
+  p99: number;
+  min: number;
+  max: number;
+  mean: number;
+}
+
 export interface HistogramSnapshot {
   counts: Uint32Array;
   total: number;
@@ -39,6 +52,9 @@ export interface WorkerInitData {
   duration: number;
   concurrency: number;
   rate?: number;
+  distribution?: "uniform" | "poisson";
+  honest?: boolean;
+  ttfb?: boolean;
   method: string;
   headers: Record<string, string>;
   body?: string;
@@ -59,6 +75,8 @@ export interface WorkerTickMessage {
   errorsByType: Record<string, number>;
   windowSnapshot: HistogramSnapshot;
   cumulativeSnapshot: HistogramSnapshot;
+  serviceTimeSnapshot?: HistogramSnapshot;
+  ttfbSnapshot?: HistogramSnapshot;
   loopLagMs: number;
 }
 
@@ -71,8 +89,11 @@ export interface WorkerDoneMessage {
   statusCodes: Record<number, number>;
   errorsByType: Record<string, number>;
   finalSnapshot: HistogramSnapshot;
+  serviceTimeSnapshot?: HistogramSnapshot;
+  ttfbSnapshot?: HistogramSnapshot;
   loopLagMaxMs: number;
   loopLagP99Ms: number;
+  avgDriftMs?: number;
 }
 
 export interface WorkerErrorMessage {
@@ -88,7 +109,7 @@ export interface RunSummary {
   rps: number;
   totalRequests: number;
   durationSec: number;
-  p50: number; // in milliseconds
+  p50: number; // in milliseconds (Honest Total Latency)
   p90: number; // in milliseconds
   p95: number; // in milliseconds
   p99: number; // in milliseconds
@@ -100,4 +121,9 @@ export interface RunSummary {
   series: LatencyPoint[];
   selfCheckWarnings: string[];
   workerCount?: number;
+  distribution?: "uniform" | "poisson";
+  serviceTime?: LatencyDistribution;
+  queueDelay?: LatencyDistribution;
+  ttfb?: LatencyDistribution;
+  scheduleDriftMs?: number;
 }

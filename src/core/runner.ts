@@ -1,6 +1,7 @@
 import { Pool } from "undici";
 import { monitorEventLoopDelay } from "node:perf_hooks";
 import { Histogram } from "../stats/histogram.js";
+import { recordWithCorrection, extractDistribution } from "../stats/co-corrector.js";
 import type { ValidatedRunOptions } from "../config/schema.js";
 import type { RunSummary, LatencyPoint } from "../types.js";
 
@@ -20,6 +21,7 @@ export async function executeClosedModel(options: ValidatedRunOptions): Promise<
   });
 
   const histogram = new Histogram();
+  const ttfbHistogram = new Histogram();
   let currentSecondHistogram = new Histogram();
   const statusCodes: Record<number, number> = {};
   const errorsByType: Record<string, number> = {};
@@ -34,12 +36,14 @@ export async function executeClosedModel(options: ValidatedRunOptions): Promise<
   const reqPath = urlObj.pathname + urlObj.search;
   const reqMethod = options.method as "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";
 
+  // Monitor Node event loop delay to detect load generator saturation
   const loopDelay = monitorEventLoopDelay({ resolution: 20 });
   loopDelay.enable();
 
   let stopped = false;
   const abortController = new AbortController();
 
+  // Helper to execute single request
   async function dispatchRequest(recordStats: boolean): Promise<void> {
     if (recordStats) totalDispatched++;
     const reqStartNs = process.hrtime.bigint();
@@ -55,13 +59,26 @@ export async function executeClosedModel(options: ValidatedRunOptions): Promise<
         signal: abortController.signal,
       });
 
+      // Headers arrived: TTFB
+      const headersNs = process.hrtime.bigint();
+      const ttfbUs = Math.max(0, Number(headersNs - reqStartNs) / 1000);
+
+      // Discard response body up to 10MB without destroying socket connection
       await response.body.dump({ limit: 10 * 1024 * 1024 });
 
       const elapsedUs = Number(process.hrtime.bigint() - reqStartNs) / 1000;
       const code = response.statusCode;
 
       if (recordStats) {
-        histogram.record(elapsedUs);
+        if (options.honest) {
+          // Expected interval based on concurrency target
+          const expectedIntervalUs = (10 / options.concurrency) * 1000;
+          recordWithCorrection(histogram, elapsedUs, expectedIntervalUs);
+        } else {
+          histogram.record(elapsedUs);
+        }
+
+        ttfbHistogram.record(ttfbUs);
         currentSecondHistogram.record(elapsedUs);
         statusCodes[code] = (statusCodes[code] || 0) + 1;
         if (code >= 400) {
@@ -187,5 +204,6 @@ export async function executeClosedModel(options: ValidatedRunOptions): Promise<
     errorsByType,
     series,
     selfCheckWarnings,
+    ttfb: options.ttfb ? extractDistribution(ttfbHistogram) : undefined,
   };
 }

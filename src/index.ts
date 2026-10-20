@@ -12,6 +12,8 @@ export { LiveDashboard } from "./report/dashboard.js";
 export { executeClosedModel } from "./core/runner.js";
 export { executeOpenModel } from "./core/open-model.js";
 export { executeMultiThreaded } from "./core/multi-runner.js";
+export { ArrivalScheduler } from "./core/scheduler.js";
+export { recordWithCorrection, extractDistribution, computeQueueDelay } from "./stats/co-corrector.js";
 
 /**
  * Programmatic API to execute a load test run.

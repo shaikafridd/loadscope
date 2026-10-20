@@ -2,6 +2,8 @@ import { parentPort, workerData } from "node:worker_threads";
 import { Pool } from "undici";
 import { monitorEventLoopDelay } from "node:perf_hooks";
 import { Histogram } from "../stats/histogram.js";
+import { recordWithCorrection } from "../stats/co-corrector.js";
+import { ArrivalScheduler } from "./scheduler.js";
 import type { WorkerInitData, WorkerTickMessage, WorkerDoneMessage } from "../types.js";
 
 async function runWorker(): Promise<void> {
@@ -16,7 +18,9 @@ async function runWorker(): Promise<void> {
     keepAliveMaxTimeout: 60_000,
   });
 
-  const histogram = new Histogram();
+  const histogram = new Histogram();          // Honest response time
+  const serviceHistogram = new Histogram();   // Server service time
+  const ttfbHistogram = new Histogram();      // TTFB
   let currentSecondHistogram = new Histogram();
   const statusCodes: Record<number, number> = {};
   const errorsByType: Record<string, number> = {};
@@ -35,9 +39,11 @@ async function runWorker(): Promise<void> {
   let stopped = false;
   const abortController = new AbortController();
 
+  const expectedIntervalUs = data.rate && data.rate > 0 ? (1 / data.rate) * 1_000_000 : 0;
+
   async function dispatchRequest(intendedNs: bigint, recordStats: boolean): Promise<void> {
     if (recordStats) dispatched++;
-    const reqStartNs = process.hrtime.bigint();
+    const dispatchNs = process.hrtime.bigint();
 
     try {
       const response = await pool.request({
@@ -50,16 +56,27 @@ async function runWorker(): Promise<void> {
         signal: abortController.signal,
       });
 
+      const headersNs = process.hrtime.bigint();
+      const ttfbUs = Math.max(0, Number(headersNs - dispatchNs) / 1000);
+
       await response.body.dump({ limit: 10 * 1024 * 1024 });
 
       const completionNs = process.hrtime.bigint();
-      const baseNs = data.mode === "open" ? intendedNs : reqStartNs;
-      const elapsedUs = Math.max(0, Number(completionNs - baseNs) / 1000);
+      const serviceUs = Math.max(0, Number(completionNs - dispatchNs) / 1000);
+      const honestResponseUs = Math.max(0, Number(completionNs - intendedNs) / 1000);
       const code = response.statusCode;
 
       if (recordStats) {
-        histogram.record(elapsedUs);
-        currentSecondHistogram.record(elapsedUs);
+        if (data.honest && expectedIntervalUs > 0) {
+          recordWithCorrection(histogram, honestResponseUs, expectedIntervalUs);
+          recordWithCorrection(serviceHistogram, serviceUs, expectedIntervalUs);
+        } else {
+          histogram.record(honestResponseUs);
+          serviceHistogram.record(serviceUs);
+        }
+
+        ttfbHistogram.record(ttfbUs);
+        currentSecondHistogram.record(honestResponseUs);
         statusCodes[code] = (statusCodes[code] || 0) + 1;
         if (code >= 400) {
           httpErrors++;
@@ -67,13 +84,14 @@ async function runWorker(): Promise<void> {
       }
     } catch (err: unknown) {
       const completionNs = process.hrtime.bigint();
-      const baseNs = data.mode === "open" ? intendedNs : reqStartNs;
-      const elapsedUs = Math.max(0, Number(completionNs - baseNs) / 1000);
+      const serviceUs = Math.max(0, Number(completionNs - dispatchNs) / 1000);
+      const honestResponseUs = Math.max(0, Number(completionNs - intendedNs) / 1000);
 
       if (recordStats) {
         networkErrors++;
-        histogram.record(elapsedUs);
-        currentSecondHistogram.record(elapsedUs);
+        histogram.record(honestResponseUs);
+        serviceHistogram.record(serviceUs);
+        currentSecondHistogram.record(honestResponseUs);
 
         const errorObj = err as { code?: string; name?: string };
         const codeKey = errorObj.code || errorObj.name || "NETWORK_ERROR";
@@ -126,6 +144,8 @@ async function runWorker(): Promise<void> {
         errorsByType: { ...errorsByType },
         windowSnapshot: currentSecondHistogram.toSnapshot(),
         cumulativeSnapshot: histogram.toSnapshot(),
+        serviceTimeSnapshot: serviceHistogram.toSnapshot(),
+        ttfbSnapshot: ttfbHistogram.toSnapshot(),
         loopLagMs: loopDelay.percentile(99) / 1_000_000,
       };
       parentPort?.postMessage(tickMsg);
@@ -133,9 +153,9 @@ async function runWorker(): Promise<void> {
     }
   }, 1000);
 
+  // Execution: Closed concurrency vs Open arrival rate
   if (data.mode === "open" && data.rate && data.rate > 0) {
-    const intervalNs = BigInt(Math.floor(1_000_000_000 / data.rate));
-    let seq = 0n;
+    const scheduler = new ArrivalScheduler(data.rate, data.distribution ?? "uniform", startNs);
     const pendingPromises: Set<Promise<void>> = new Set();
 
     while (!stopped) {
@@ -145,15 +165,8 @@ async function runWorker(): Promise<void> {
         break;
       }
 
-      const intendedNs = startNs + seq * intervalNs;
-      seq++;
-
-      if (nowNs < intendedNs) {
-        const sleepMs = Number(intendedNs - nowNs) / 1_000_000;
-        if (sleepMs > 1) {
-          await new Promise((r) => setTimeout(r, sleepMs));
-        }
-      }
+      const intendedNs = scheduler.nextArrivalNs();
+      await scheduler.waitUntil(intendedNs);
 
       const p = dispatchRequest(intendedNs, true);
       pendingPromises.add(p);
@@ -166,6 +179,7 @@ async function runWorker(): Promise<void> {
 
     await Promise.allSettled(Array.from(pendingPromises));
   } else {
+    // Closed concurrency loop
     async function workerLoop(idx: number): Promise<void> {
       if (data.rampUp > 0) {
         const delayMs = (idx / data.concurrency) * data.rampUp * 1000;
@@ -201,6 +215,8 @@ async function runWorker(): Promise<void> {
     statusCodes,
     errorsByType,
     finalSnapshot: histogram.toSnapshot(),
+    serviceTimeSnapshot: serviceHistogram.toSnapshot(),
+    ttfbSnapshot: ttfbHistogram.toSnapshot(),
     loopLagMaxMs: loopDelay.max / 1_000_000,
     loopLagP99Ms: loopDelay.percentile(99) / 1_000_000,
   };

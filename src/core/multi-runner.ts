@@ -4,6 +4,7 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Histogram } from "../stats/histogram.js";
 import { LiveDashboard } from "../report/dashboard.js";
+import { extractDistribution, computeQueueDelay } from "../stats/co-corrector.js";
 import { resolveWorkerCount, type ValidatedRunOptions } from "../config/schema.js";
 import type {
   RunSummary,
@@ -14,6 +15,9 @@ import type {
   WorkerTickMessage,
 } from "../types.js";
 
+/**
+ * Resolves the location of worker.js/worker.ts across dev, test, and bundled environments.
+ */
 function getWorkerPath(): { path: string; execArgv?: string[] } {
   const currentFile = fileURLToPath(import.meta.url);
   if (currentFile.endsWith(".ts")) {
@@ -31,6 +35,11 @@ function getWorkerPath(): { path: string; execArgv?: string[] } {
   return { path: path.resolve(process.cwd(), "dist/worker.js") };
 }
 
+/**
+ * Execute a multi-threaded load test across worker threads.
+ * Partitions concurrency and arrival rate across W workers, merges their
+ * log-bucketed histogram snapshots in O(B) time, and updates the live dashboard.
+ */
 export async function executeMultiThreaded(options: ValidatedRunOptions): Promise<RunSummary> {
   const workerCount = resolveWorkerCount(options.workers, options.concurrency);
   const targetMode = options.rate && options.rate > 0 ? "open" : (options.mode ?? "closed");
@@ -40,6 +49,8 @@ export async function executeMultiThreaded(options: ValidatedRunOptions): Promis
   const ratePerWorker = options.rate && options.rate > 0 ? options.rate / workerCount : undefined;
 
   const globalHistogram = new Histogram();
+  const globalServiceHistogram = new Histogram();
+  const globalTtfbHistogram = new Histogram();
   const aggregatedStatusCodes: Record<number, number> = {};
   const aggregatedErrorsByType: Record<string, number> = {};
   const selfCheckWarnings: string[] = [];
@@ -71,6 +82,9 @@ export async function executeMultiThreaded(options: ValidatedRunOptions): Promis
       duration: options.duration,
       concurrency: workerConcurrency,
       rate: ratePerWorker,
+      distribution: options.distribution,
+      honest: options.honest,
+      ttfb: options.ttfb,
       method: options.method,
       headers: options.headers,
       body: options.body,
@@ -167,6 +181,12 @@ export async function executeMultiThreaded(options: ValidatedRunOptions): Promis
     httpErrors += done.httpErrors;
 
     globalHistogram.mergeSnapshot(done.finalSnapshot);
+    if (done.serviceTimeSnapshot) {
+      globalServiceHistogram.mergeSnapshot(done.serviceTimeSnapshot);
+    }
+    if (done.ttfbSnapshot) {
+      globalTtfbHistogram.mergeSnapshot(done.ttfbSnapshot);
+    }
 
     for (const [code, count] of Object.entries(done.statusCodes)) {
       const numCode = Number(code);
@@ -199,15 +219,21 @@ export async function executeMultiThreaded(options: ValidatedRunOptions): Promis
     });
   }
 
+  const responseDist = extractDistribution(globalHistogram);
+  const hasService = globalServiceHistogram.total > 0;
+  const serviceDist = hasService ? extractDistribution(globalServiceHistogram) : undefined;
+  const queueDelayDist = serviceDist ? computeQueueDelay(responseDist, serviceDist) : undefined;
+  const ttfbDist = globalTtfbHistogram.total > 0 && options.ttfb ? extractDistribution(globalTtfbHistogram) : undefined;
+
   return {
     target: options.url,
     rps,
     totalRequests: totalDispatched,
     durationSec: totalDurationSec,
-    p50: globalHistogram.percentileMs(50),
-    p90: globalHistogram.percentileMs(90),
-    p95: globalHistogram.percentileMs(95),
-    p99: globalHistogram.percentileMs(99),
+    p50: responseDist.p50,
+    p90: responseDist.p90,
+    p95: responseDist.p95,
+    p99: responseDist.p99,
     errorRate,
     networkErrors,
     httpErrors,
@@ -216,5 +242,9 @@ export async function executeMultiThreaded(options: ValidatedRunOptions): Promis
     series,
     selfCheckWarnings,
     workerCount,
+    distribution: options.distribution,
+    serviceTime: serviceDist,
+    queueDelay: queueDelayDist,
+    ttfb: ttfbDist,
   };
 }
