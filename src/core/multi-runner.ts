@@ -19,20 +19,27 @@ import type {
  * Resolves the location of worker.js/worker.ts across dev, test, and bundled environments.
  */
 function getWorkerPath(): { path: string; execArgv?: string[] } {
-  const currentFile = fileURLToPath(import.meta.url);
-  if (currentFile.endsWith(".ts")) {
-    const tsWorker = path.resolve(path.dirname(currentFile), "worker.ts");
-    return { path: tsWorker, execArgv: ["--import", "tsx"] };
+  // If compiled dist/worker.js exists (built by tsup in CI/prod), prefer it for pure native execution
+  const distCandidate = path.resolve(process.cwd(), "dist/worker.js");
+  if (fs.existsSync(distCandidate)) {
+    return { path: distCandidate };
   }
 
+  const currentFile = fileURLToPath(import.meta.url);
   const dir = path.dirname(currentFile);
+
   const candidate1 = path.resolve(dir, "worker.js");
   if (fs.existsSync(candidate1)) return { path: candidate1 };
 
   const candidate2 = path.resolve(dir, "../worker.js");
   if (fs.existsSync(candidate2)) return { path: candidate2 };
 
-  return { path: path.resolve(process.cwd(), "dist/worker.js") };
+  if (currentFile.endsWith(".ts")) {
+    const tsWorker = path.resolve(dir, "worker.ts");
+    return { path: tsWorker, execArgv: ["--import", "tsx"] };
+  }
+
+  return { path: distCandidate };
 }
 
 /**

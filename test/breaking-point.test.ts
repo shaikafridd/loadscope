@@ -17,6 +17,7 @@ describe("Phase 4 Breaking-Point Finder & Capacity Detection", () => {
 
   afterAll(async () => {
     await new Promise<void>((resolve, reject) => {
+      serverInstance.closeAllConnections?.();
       serverInstance.close((err) => (err ? reject(err) : resolve()));
     });
   });

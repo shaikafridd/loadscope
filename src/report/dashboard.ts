@@ -62,8 +62,8 @@ export class LiveDashboard {
 
     // Throughput & total requests
     lines.push(
-      ` ${picocolors.dim("Throughput:")}  ${picocolors.green(picocolors.bold(stats.currentRps.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })))} req/s` +
-        `   ${picocolors.dim("Total Requests:")} ${picocolors.bold(stats.totalRequests.toLocaleString())}`
+      ` ${picocolors.dim("Throughput:")}  ${picocolors.green(picocolors.bold(stats.currentRps.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })))} req/s` +
+        `   ${picocolors.dim("Total Requests:")} ${picocolors.bold(stats.totalRequests.toLocaleString("en-US"))}`
     );
 
     // Latency live percentiles
@@ -78,7 +78,7 @@ export class LiveDashboard {
     const totalFailures = stats.networkErrors + stats.httpErrors;
     const errorRate = stats.totalRequests > 0 ? (totalFailures / stats.totalRequests) * 100 : 0;
     const errorColor = totalFailures > 0 ? picocolors.red : picocolors.green;
-    const errorStr = errorColor(`${errorRate.toFixed(2)}% (${totalFailures.toLocaleString()} fails)`);
+    const errorStr = errorColor(`${errorRate.toFixed(2)}% (${totalFailures.toLocaleString("en-US")} fails)`);
 
     lines.push(
       ` ${picocolors.dim("Error Rate:")}  ${errorStr}` +

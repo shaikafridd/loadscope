@@ -2,7 +2,7 @@ import picocolors from "picocolors";
 import type { BreakpointSummary, BreakpointStepResult } from "../types.js";
 
 function fmt(num: number, decimals = 1): string {
-  return num.toLocaleString(undefined, {
+  return num.toLocaleString("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });

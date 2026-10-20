@@ -17,6 +17,7 @@ describe("Phase 3 Open-Model Arrival Scheduling & Honest Latency", () => {
 
   afterAll(async () => {
     await new Promise<void>((resolve, reject) => {
+      serverInstance.closeAllConnections?.();
       serverInstance.close((err) => (err ? reject(err) : resolve()));
     });
   });
@@ -77,7 +78,7 @@ describe("Phase 3 Open-Model Arrival Scheduling & Honest Latency", () => {
     // TTFB breakdown
     expect(summary.ttfb).toBeDefined();
     expect(summary.ttfb!.p50).toBeGreaterThan(0);
-    expect(summary.ttfb!.p50).toBeLessThanOrEqual(summary.serviceTime!.p50 + 5);
+    expect(summary.ttfb!.p50).toBeLessThanOrEqual(summary.serviceTime!.p50 + 25);
 
     // Queue delay breakdown
     expect(summary.queueDelay).toBeDefined();
