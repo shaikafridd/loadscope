@@ -1,4 +1,5 @@
 import { z } from "zod";
+import os from "node:os";
 import type { RunOptions } from "../types.js";
 
 /**
@@ -54,6 +55,18 @@ export function parseHeaders(headersInput?: Record<string, string> | string[]): 
 }
 
 /**
+ * Resolves worker count when "auto" is requested.
+ */
+export function resolveWorkerCount(workers: number | "auto" | undefined, concurrency: number): number {
+  if (workers === "auto") {
+    const cpus = os.cpus()?.length || 1;
+    return Math.max(1, Math.min(concurrency, cpus));
+  }
+  const count = typeof workers === "number" ? workers : 1;
+  return Math.max(1, Math.min(concurrency, count));
+}
+
+/**
  * Schema validating options passed to LoadScope run.
  */
 export const RunOptionsSchema = z.object({
@@ -66,6 +79,14 @@ export const RunOptionsSchema = z.object({
     .default("GET"),
   headers: z.record(z.string()).default({}),
   body: z.string().optional(),
+  timeout: z.union([z.string(), z.number()]).default("10s").transform(parseDurationToSeconds),
+  warmup: z.union([z.string(), z.number()]).optional().transform((v) => (v ? parseDurationToSeconds(v) : 0)),
+  rampUp: z.union([z.string(), z.number()]).optional().transform((v) => (v ? parseDurationToSeconds(v) : 0)),
+  mode: z.enum(["closed", "open"]).optional(),
+  workers: z.union([z.coerce.number().int().min(1), z.literal("auto")]).default(1),
+  dashboard: z.boolean().default(true),
+  json: z.union([z.string(), z.boolean()]).optional(),
+  csv: z.union([z.string(), z.boolean()]).optional(),
   pdf: z.string().optional(),
   aiReport: z.string().optional(),
   aiDryRun: z.boolean().default(false),
@@ -77,7 +98,6 @@ export type ValidatedRunOptions = z.infer<typeof RunOptionsSchema>;
  * Validate and normalize run options.
  */
 export function validateRunOptions(raw: Partial<RunOptions>): ValidatedRunOptions {
-  // Normalize headers if an array was passed via CLI flags
   let headers = raw.headers;
   if (Array.isArray(headers)) {
     headers = parseHeaders(headers as unknown as string[]);

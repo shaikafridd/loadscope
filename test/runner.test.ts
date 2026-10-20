@@ -32,7 +32,8 @@ describe("Core Closed-Model Load Runner Integration", () => {
     expect(summary.errorRate).toBe(0);
     expect(summary.statusCodes[200]).toBe(summary.totalRequests);
     expect(summary.p50).toBeGreaterThan(0);
-    expect(summary.p95).toBeGreaterThanOrEqual(summary.p50);
+    expect(summary.p90).toBeGreaterThanOrEqual(summary.p50);
+    expect(summary.p95).toBeGreaterThanOrEqual(summary.p90);
     expect(summary.p99).toBeGreaterThanOrEqual(summary.p95);
     expect(summary.series.length).toBeGreaterThan(0);
   });
@@ -52,7 +53,7 @@ describe("Core Closed-Model Load Runner Integration", () => {
     expect(summary.p50).toBeGreaterThanOrEqual(25);
   });
 
-  it("accurately records simulated HTTP 500 status codes", async () => {
+  it("accurately records simulated HTTP 500 status codes as errors", async () => {
     const summary = await run({
       url: `${baseUrl}/error?status=500`,
       concurrency: 5,
@@ -61,6 +62,49 @@ describe("Core Closed-Model Load Runner Integration", () => {
 
     expect(summary.totalRequests).toBeGreaterThan(5);
     expect(summary.statusCodes[500]).toBe(summary.totalRequests);
+    expect(summary.httpErrors).toBe(summary.totalRequests);
+    // Crucial fix: errorRate must be 1 (100%), not 0%
+    expect(summary.errorRate).toBe(1);
+  });
+
+  it("handles request timeouts cleanly on /stall endpoint", async () => {
+    const summary = await run({
+      url: `${baseUrl}/stall?ms=5000`,
+      concurrency: 2,
+      duration: 1,
+      timeout: 0.2, // 200ms timeout
+    });
+
+    expect(summary.networkErrors).toBeGreaterThan(0);
+    expect(summary.errorRate).toBe(1);
+    expect(summary.p50).toBeGreaterThanOrEqual(150); // Timeout latency captured in histogram
+    expect(Object.keys(summary.errorsByType).length).toBeGreaterThan(0);
+  });
+
+  it("executes open arrival model when rate is specified", async () => {
+    const targetRps = 25;
+    const summary = await run({
+      url: `${baseUrl}/`,
+      rate: targetRps,
+      duration: 1,
+      mode: "open",
+    });
+
+    expect(summary.totalRequests).toBeGreaterThanOrEqual(15);
+    expect(summary.errorRate).toBe(0);
+    expect(summary.p50).toBeGreaterThan(0);
+  });
+
+  it("supports warmup phase without including early samples", async () => {
+    const summary = await run({
+      url: `${baseUrl}/`,
+      concurrency: 5,
+      warmup: 0.5,
+      duration: 1,
+    });
+
+    expect(summary.totalRequests).toBeGreaterThan(10);
+    expect(summary.durationSec).toBeCloseTo(1, 0);
   });
 
   it("throws validation error for invalid URL", async () => {
