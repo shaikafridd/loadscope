@@ -77,7 +77,8 @@ export class Histogram {
     for (let i = 0; i < BUCKETS; i++) {
       seen += this.counts[i];
       if (seen >= target) {
-        return this.valFromIdx(i);
+        const val = this.valFromIdx(i);
+        return Math.min(Math.max(val, this.minVal), this.maxVal);
       }
     }
 

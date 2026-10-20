@@ -23,26 +23,41 @@ describe("Fixed-Memory Log-Bucketed Histogram", () => {
     expect(h.max()).toBe(3000);
     expect(h.mean()).toBe(2000);
     expect(h.meanMs()).toBe(2);
+    expect(h.minMs()).toBe(1);
+    expect(h.maxMs()).toBe(3);
   });
 
-  it("matches hdr-histogram-js percentiles within ~2% error bound", () => {
+  it("strictly clamps percentile() to never exceed max() or drop below min()", () => {
+    const h = new Histogram();
+    // Test with single sample where bucket upper edge would normally overshoot
+    h.record(1523);
+    expect(h.percentile(100)).toBe(1523);
+    expect(h.percentile(99.9)).toBeLessThanOrEqual(h.max());
+    expect(h.percentile(50)).toBeLessThanOrEqual(h.max());
+    expect(h.percentile(50)).toBeGreaterThanOrEqual(h.min());
+
+    // Test with cluster of samples
+    h.record(1524);
+    h.record(1525);
+    for (let p = 0; p <= 100; p += 5) {
+      expect(h.percentile(p)).toBeLessThanOrEqual(h.max());
+      expect(h.percentile(p)).toBeGreaterThanOrEqual(h.min());
+    }
+  });
+
+  it("matches hdr-histogram-js percentiles within ~2% error bound on bimodal distribution", () => {
     const custom = new Histogram();
     const reference = hdr.build({
       lowestDiscernibleValue: 1,
-      highestTrackableValue: 3600000000, // 1 hour in ms/us
+      highestTrackableValue: 3600000000,
       numberOfSignificantValueDigits: 3,
     });
 
-    // Populate with 10,000 synthetic latency samples (in microseconds)
-    // representing a realistic bimodal web service distribution:
-    // mostly 10-30ms, with a tail up to 500ms
     for (let i = 0; i < 10000; i++) {
       let sampleUs: number;
       if (i % 10 === 0) {
-        // 10% slow requests: 100ms - 500ms
         sampleUs = Math.floor(100000 + Math.random() * 400000);
       } else {
-        // 90% fast requests: 5ms - 30ms
         sampleUs = Math.floor(5000 + Math.random() * 25000);
       }
       custom.record(sampleUs);
@@ -53,12 +68,35 @@ describe("Fixed-Memory Log-Bucketed Histogram", () => {
     for (const p of testPercentiles) {
       const customVal = custom.percentile(p);
       const refVal = reference.getValueAtPercentile(p);
-
-      // Relative error: |custom - ref| / ref
       const relativeError = Math.abs(customVal - refVal) / refVal;
 
-      // Custom histogram with GROWTH = 1.02 bounds error to ~2%
-      expect(relativeError).toBeLessThan(0.03); // Within 3% tolerance
+      expect(relativeError).toBeLessThan(0.03);
+    }
+  });
+
+  it("matches hdr-histogram-js on heavy-tailed Pareto distribution across p50, p90, p95, p99", () => {
+    const custom = new Histogram();
+    const reference = hdr.build({
+      lowestDiscernibleValue: 1,
+      highestTrackableValue: 3600000000,
+      numberOfSignificantValueDigits: 3,
+    });
+
+    // Pareto distribution: x = x_m / (U^(1/alpha))
+    const alpha = 1.5;
+    const xm = 1000; // 1ms base
+    for (let i = 0; i < 5000; i++) {
+      const u = Math.max(0.0001, Math.random());
+      const valUs = Math.min(10_000_000, Math.floor(xm / Math.pow(u, 1 / alpha)));
+      custom.record(valUs);
+      reference.recordValue(valUs);
+    }
+
+    for (const p of [50, 90, 95, 99]) {
+      const customVal = custom.percentile(p);
+      const refVal = reference.getValueAtPercentile(p);
+      const relativeError = Math.abs(customVal - refVal) / refVal;
+      expect(relativeError).toBeLessThan(0.03);
     }
   });
 
@@ -84,7 +122,6 @@ describe("Fixed-Memory Log-Bucketed Histogram", () => {
     expect(h1.min()).toBe(combined.min());
     expect(h1.max()).toBe(combined.max());
 
-    // p50 and p95 should match closely
     expect(h1.percentile(50)).toBeCloseTo(combined.percentile(50), 0);
     expect(h1.percentile(95)).toBeCloseTo(combined.percentile(95), 0);
   });
