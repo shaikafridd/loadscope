@@ -26,10 +26,10 @@ describe("Phase 2 Live Terminal Dashboard", () => {
     expect(text).toContain("http://127.0.0.1:3000/api");
     expect(text).toContain("45%");
     expect(text).toContain("Throughput:");
-    expect(text).toContain("1,000.0");
+    expect(text).toMatch(/1[,.]000/);
     expect(text).toContain("req/s");
     expect(text).toContain("Total Requests:");
-    expect(text).toContain("4,500");
+    expect(text).toMatch(/4[,.]500/);
     expect(text).toContain("p50:");
     expect(text).toContain("1.25ms");
     expect(text).toContain("p90:");

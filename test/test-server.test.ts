@@ -15,6 +15,7 @@ describe("LoadScope Controllable Test Server", () => {
 
   afterAll(async () => {
     await new Promise<void>((resolve, reject) => {
+      serverInstance.closeAllConnections?.();
       serverInstance.close((err) => (err ? reject(err) : resolve()));
     });
   });

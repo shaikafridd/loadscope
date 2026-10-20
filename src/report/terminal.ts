@@ -5,7 +5,7 @@ import type { RunSummary } from "../types.js";
  * Format a number to fixed decimals or integer.
  */
 function fmt(num: number, decimals = 2): string {
-  return num.toLocaleString(undefined, {
+  return num.toLocaleString("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
