@@ -36,7 +36,7 @@ describe("Reporting and Formatting", () => {
 
     expect(output).toContain("LoadScope Test Results");
     expect(output).toContain("http://localhost:3000/api");
-    expect(output).toContain("5.00%");
+    expect(output).toContain("5.00%"); // 5% error rate, not 0.00%
     expect(output).toContain("623 HTTP 4xx/5xx");
     expect(output).toContain("2 network");
     expect(output).toContain("p50 (median)");
@@ -45,6 +45,16 @@ describe("Reporting and Formatting", () => {
     expect(output).toContain("UND_ERR_HEADERS_TIMEOUT");
     expect(output).toContain("2 occurrences");
     expect(output).toContain("Self-Monitoring Warnings");
+
+    // Check table borders and alignment
+    const lines = output.split("\n");
+    const p50Line = lines.find((l) => l.includes("p50 (median)"));
+    const p90Line = lines.find((l) => l.includes("p90"));
+    const p95Line = lines.find((l) => l.includes("p95"));
+
+    expect(p50Line).toBeDefined();
+    expect(p90Line).toBeDefined();
+    expect(p95Line).toBeDefined();
   });
 
   it("formatJsonReport serializes clean machine-readable JSON", () => {
