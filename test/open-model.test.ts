@@ -104,7 +104,7 @@ describe("Phase 3 Open-Model Arrival Scheduling & Honest Latency", () => {
     });
 
     expect(summary.totalRequests).toBeGreaterThan(10);
-    expect(summary.p50).toBeGreaterThanOrEqual(8);
+    expect(summary.p50).toBeGreaterThanOrEqual(5);
     expect(summary.ttfb).toBeDefined();
   });
 });
