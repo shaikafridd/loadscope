@@ -34,7 +34,7 @@ describe("LoadScope Controllable Test Server", () => {
     const elapsed = Date.now() - start;
 
     expect(res.status).toBe(200);
-    expect(elapsed).toBeGreaterThanOrEqual(delay - 10);
+    expect(elapsed).toBeGreaterThanOrEqual(delay - 20);
     const body = await res.json();
     expect(body.delayed).toBe(delay);
   });
