@@ -29,6 +29,8 @@ export {
   generateGithubStepSummary,
   writeGithubStepSummary,
 } from "./report/compare-terminal.js";
+export { generatePdfReport } from "./report/pdf.js";
+export { buildAiDiagnosticPrompt, fetchAiDiagnostic } from "./report/ai-analysis.js";
 
 /**
  * Programmatic API to execute a load test run.

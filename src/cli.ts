@@ -2,7 +2,13 @@
 import { Command } from "commander";
 import picocolors from "picocolors";
 import fs from "node:fs/promises";
-import { run, runBreakingPoint } from "./index.js";
+import {
+  run,
+  runBreakingPoint,
+  generatePdfReport,
+  buildAiDiagnosticPrompt,
+  fetchAiDiagnostic,
+} from "./index.js";
 import { printTerminalReport } from "./report/terminal.js";
 import { printBreakpointTerminalReport, formatStepRow } from "./report/breakpoint-terminal.js";
 import {
@@ -334,6 +340,33 @@ program
       // Default terminal report when not piping raw JSON/CSV to stdout
       if (!isSilentStdout) {
         printTerminalReport(summary);
+      }
+
+      // Phase 6: AI Dry Run
+      if (options.aiDryRun) {
+        const prompt = buildAiDiagnosticPrompt(summary);
+        console.log(picocolors.cyan("\n🤖 LoadScope AI Diagnostic Prompt Preview (--ai-dry-run):"));
+        console.log(picocolors.dim("─".repeat(70)));
+        console.log(prompt);
+        console.log(picocolors.dim("─".repeat(70)));
+      }
+
+      // Phase 6: PDF Report and AI Report Generation
+      if (options.pdf || options.aiReport) {
+        const pdfPath = typeof options.aiReport === "string" ? options.aiReport : options.pdf;
+        let aiAnalysis: string | undefined;
+
+        if (options.aiReport) {
+          if (!isSilentStdout) {
+            console.log(picocolors.cyan("\n🤖 Generating AI Performance Diagnostic..."));
+          }
+          aiAnalysis = await fetchAiDiagnostic(summary);
+        }
+
+        const resolvedPdf = await generatePdfReport(summary, pdfPath, aiAnalysis);
+        if (!isSilentStdout) {
+          console.log(picocolors.green(`\n📄 Generated vector PDF report: ${resolvedPdf}`));
+        }
       }
 
       // Phase 5: Baseline Saving
