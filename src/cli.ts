@@ -9,6 +9,9 @@ import {
   buildAiDiagnosticPrompt,
   fetchAiDiagnostic,
   generateHtmlReport,
+  parseScenario,
+  runScenario,
+  printScenarioTerminalReport,
 } from "./index.js";
 import { printTerminalReport } from "./report/terminal.js";
 import { printBreakpointTerminalReport, formatStepRow } from "./report/breakpoint-terminal.js";
@@ -134,6 +137,62 @@ program
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       console.error("\n" + picocolors.red(`❌ LoadScope breakpoint execution failed: ${errorMsg}\n`));
+      process.exit(1);
+    }
+  });
+
+// Subcommand: scenario <file>
+program
+  .command("scenario <file>")
+  .description("Execute a multi-step user journey scenario from a YAML or JSON definition")
+  .option("-c, --concurrency <number>", "Override scenario concurrency")
+  .option("-d, --duration <duration>", "Override scenario duration (e.g. 10s, 1m)")
+  .option("--timeout <duration>", "Override request timeout")
+  .option("--json [path]", "Export machine-readable JSON scenario summary")
+  .option("--html [path]", "Generate interactive HTML report for scenario")
+  .option("--pdf <path>", "Generate vector PDF report for scenario")
+  .action(async (file, options) => {
+    try {
+      const isSilentStdout = options.json === true;
+      if (!isSilentStdout) {
+        console.log(picocolors.cyan(`\n🎭 Initializing LoadScope Scenario Runner: ${picocolors.bold(file)}...`));
+      }
+
+      const definition = parseScenario(file);
+      const summary = await runScenario(definition, {
+        concurrency: options.concurrency ? parseInt(options.concurrency, 10) : undefined,
+        duration: options.duration,
+        timeout: options.timeout,
+      });
+
+      if (typeof options.json === "string") {
+        await fs.writeFile(options.json, JSON.stringify(summary, null, 2), "utf-8");
+        console.log(picocolors.green(`\n📄 Saved JSON report to: ${options.json}`));
+      } else if (options.json === true) {
+        console.log(JSON.stringify(summary, null, 2));
+      }
+
+      if (options.html) {
+        const htmlPath = typeof options.html === "string" ? options.html : "loadscope-scenario-report.html";
+        const resolved = await generateHtmlReport(summary.overallSummary, htmlPath);
+        if (!isSilentStdout) {
+          console.log(picocolors.green(`\n🌐 Generated interactive HTML report: ${resolved}`));
+        }
+      }
+
+      if (options.pdf) {
+        const resolvedPdf = await generatePdfReport(summary.overallSummary, options.pdf);
+        if (!isSilentStdout) {
+          console.log(picocolors.green(`\n📄 Generated vector PDF report: ${resolvedPdf}`));
+        }
+      }
+
+      if (!isSilentStdout) {
+        printScenarioTerminalReport(summary);
+      }
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error("\n" + picocolors.red(`❌ LoadScope scenario execution failed: ${errorMsg}\n`));
       process.exit(1);
     }
   });

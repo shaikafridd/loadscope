@@ -32,6 +32,9 @@ export {
 export { generatePdfReport } from "./report/pdf.js";
 export { buildAiDiagnosticPrompt, fetchAiDiagnostic } from "./report/ai-analysis.js";
 export { renderHtmlReport, generateHtmlReport } from "./report/html.js";
+export { parseScenario, interpolateVariables, extractFromResponse } from "./scenario/parser.js";
+export { runScenario } from "./scenario/runner.js";
+export { formatScenarioTerminalReport, printScenarioTerminalReport } from "./report/scenario-terminal.js";
 
 /**
  * Programmatic API to execute a load test run.

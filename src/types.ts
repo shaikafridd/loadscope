@@ -248,3 +248,59 @@ export interface ComparisonSummary {
   improvements: ComparisonMetric[];
   thresholds: GateThresholds;
 }
+
+export interface ScenarioStep {
+  name: string;
+  method?: string;
+  path?: string;
+  url?: string;
+  headers?: Record<string, string>;
+  body?: string;
+  extract?: Record<string, string>;
+  thinkTime?: string | number;
+}
+
+export interface ScenarioDefinition {
+  name: string;
+  target: string;
+  duration?: string | number;
+  concurrency?: number;
+  timeout?: string | number;
+  steps: ScenarioStep[];
+}
+
+export interface StepSummary {
+  name: string;
+  method: string;
+  path: string;
+  totalRequests: number;
+  rps: number;
+  p50: number;
+  p90: number;
+  p95: number;
+  p99: number;
+  min: number;
+  max: number;
+  mean: number;
+  errorRate: number;
+  statusCodes: Record<number, number>;
+  networkErrors: number;
+  httpErrors: number;
+}
+
+export interface ScenarioSummary {
+  name: string;
+  target: string;
+  durationSec: number;
+  concurrency: number;
+  totalJourneys: number;
+  completedJourneys: number;
+  failedJourneys: number;
+  journeysPerSec: number;
+  journeyP50: number;
+  journeyP90: number;
+  journeyP95: number;
+  journeyP99: number;
+  steps: StepSummary[];
+  overallSummary: RunSummary;
+}
