@@ -1,7 +1,7 @@
 {
   "name": "loadscope",
   "version": "0.1.0",
-  "description": "Load tester with breaking-point finder, CI regression gate, and PDF reports",
+  "description": "A high-performance HTTP load tester with automated breaking-point finder, Coordinated Omission correction, CI regression gate, and zero-browser PDF/HTML reports",
   "type": "module",
   "bin": {
     "loadscope": "dist/cli.js"
@@ -13,6 +13,27 @@
     "README.md",
     "LICENSE"
   ],
+  "keywords": [
+    "load-testing",
+    "benchmark",
+    "performance",
+    "breaking-point",
+    "coordinated-omission",
+    "http",
+    "stress-testing",
+    "ci-cd",
+    "regression-testing",
+    "pdf-report"
+  ],
+  "author": "Shaik Afrid",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shaikafridd/loadscope.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shaikafridd/loadscope/issues"
+  },
+  "homepage": "https://github.com/shaikafridd/loadscope#readme",
   "license": "MIT",
   "engines": {
     "node": ">=20"
