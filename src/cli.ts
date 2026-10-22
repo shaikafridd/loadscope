@@ -8,6 +8,7 @@ import {
   generatePdfReport,
   buildAiDiagnosticPrompt,
   fetchAiDiagnostic,
+  generateHtmlReport,
 } from "./index.js";
 import { printTerminalReport } from "./report/terminal.js";
 import { printBreakpointTerminalReport, formatStepRow } from "./report/breakpoint-terminal.js";
@@ -225,6 +226,7 @@ program
   .option("--max-p99-increase <pct>", "Allowable percentage increase in p99 latency for baseline comparison")
   .option("--json [path]", "Export machine-readable JSON summary report (to path or stdout)")
   .option("--csv [path]", "Export machine-readable CSV summary and time-series report (to path or stdout)")
+  .option("--html [path]", "Generate a self-contained interactive HTML report (default: loadscope-report.html)")
   .option("--pdf <path>", "Generate a PDF report at the specified path")
   .option("--ai-report <path>", "Generate a PDF report including AI analysis (requires LLM_API_KEY)")
   .option("--ai-dry-run", "Preview prompt that would be sent to LLM without calling API")
@@ -366,6 +368,15 @@ program
         const resolvedPdf = await generatePdfReport(summary, pdfPath, aiAnalysis);
         if (!isSilentStdout) {
           console.log(picocolors.green(`\n📄 Generated vector PDF report: ${resolvedPdf}`));
+        }
+      }
+
+      // Phase 7: Interactive HTML Report Generation
+      if (options.html) {
+        const htmlPath = typeof options.html === "string" ? options.html : "loadscope-report.html";
+        const resolvedHtml = await generateHtmlReport(summary, htmlPath);
+        if (!isSilentStdout) {
+          console.log(picocolors.green(`\n🌐 Generated interactive HTML report: ${resolvedHtml}`));
         }
       }
 

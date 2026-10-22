@@ -17,6 +17,7 @@ export interface RunOptions {
   dashboard?: boolean;
   json?: string | boolean;
   csv?: string | boolean;
+  html?: string | boolean;
   pdf?: string;
   aiReport?: string;
   aiDryRun?: boolean;
