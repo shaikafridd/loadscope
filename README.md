@@ -51,6 +51,40 @@ npx loadscope http://localhost:3000/api -c 50 -d 10s --pdf report.pdf
 npx loadscope http://localhost:3000/api -c 50 -d 10s --html
 ```
 
+### 🖥️ Live Terminal Dashboard Experience
+
+```text
+ 🚀 LoadScope v0.1.0  •  Target: http://localhost:3000/api  •  Workers: 4
+ ────────────────────────────────────────────────────────────────────────
+ Throughput:      3,480 req/s    [████████████████████░░░░░░░░░░]  70%
+ Active Conns:    50 / 50        Dispatched: 34,800 reqs
+ Latency (p50):   12.4 ms        Latency (p95): 38.6 ms  (p99: 89.2 ms)
+ Error Rate:      0.00%          Event Loop Lag: 1.2 ms (Optimal)
+
+ History (p95):   18ms ─── 22ms ─── 28ms ─── 35ms ─── 38ms ─── 39ms ─── 38ms
+ ────────────────────────────────────────────────────────────────────────
+```
+
+### 🎯 Automated Breaking-Point Finder Experience
+
+```text
+ 🔍 LoadScope Breaking-Point Capacity Detection:
+ ────────────────────────────────────────────────────────────────────────
+ [Step 1]  Load:  20 conn  │  3,850 req/s  │  p95:  18.2ms  │  Errors: 0.0%  │  ✅ PASS
+ [Step 2]  Load:  40 conn  │  7,620 req/s  │  p95:  24.5ms  │  Errors: 0.0%  │  ✅ PASS
+ [Step 3]  Load:  60 conn  │ 11,240 req/s  │  p95:  32.1ms  │  Errors: 0.0%  │  ✅ PASS
+ [Step 4]  Load:  80 conn  │ 14,810 req/s  │  p95:  45.8ms  │  Errors: 0.0%  │  ✅ PASS
+ [Step 5]  Load: 100 conn  │ 16,920 req/s  │  p95: 142.0ms  │  Errors: 0.0%  │  ✅ PASS
+ [Step 6]  Load: 120 conn  │ 17,100 req/s  │  p95: 385.2ms  │  Errors: 0.2%  │  ❌ BREACH
+ ────────────────────────────────────────────────────────────────────────
+ ⚡ Binary Search Refinement: Narrowing capacity between 100 and 120...
+ [Refine]  Load: 110 conn  │ 17,250 req/s  │  p95: 220.4ms  │  Errors: 0.0%  │  ✅ PASS
+ [Refine]  Load: 115 conn  │ 17,180 req/s  │  p95: 295.1ms  │  Errors: 0.0%  │  ✅ PASS
+ [Refine]  Load: 117 conn  │ 17,110 req/s  │  p95: 324.8ms  │  Errors: 0.1%  │  ❌ BREACH
+ ────────────────────────────────────────────────────────────────────────
+ 🎯 Result: Maximum Safe Capacity is 115 concurrent connections (p95: 295.1ms)
+```
+
 ---
 
 ## 📊 Feature Comparison Matrix
