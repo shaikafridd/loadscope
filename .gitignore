@@ -7,4 +7,5 @@ coverage
 .DS_Store
 Thumbs.db
 *.pdf
+scripts/generate-phase*.js
 
