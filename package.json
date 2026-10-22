@@ -28,7 +28,7 @@
   "author": "Shaik Afrid",
   "repository": {
     "type": "git",
-    "url": "https://github.com/shaikafridd/loadscope.git"
+    "url": "git+https://github.com/shaikafridd/loadscope.git"
   },
   "bugs": {
     "url": "https://github.com/shaikafridd/loadscope/issues"
