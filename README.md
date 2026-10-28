@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ LoadScope
+# ⚡ LoadScope.
 
 **A high-performance HTTP load tester with automated breaking-point finder, Coordinated Omission correction, CI performance regression gating, and zero-browser PDF/HTML reports.**
 
