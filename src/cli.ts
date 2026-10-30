@@ -35,7 +35,7 @@ const program = new Command();
 program
   .name("loadscope")
   .description("A high-performance load-testing CLI with breaking-point finder and CI regression gate")
-  .version("0.1.0");
+  .version("1.0.0");
 
 // Subcommand: break / breakpoint
 program

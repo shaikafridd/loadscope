@@ -520,7 +520,7 @@ export function renderHtmlReport(summary: RunSummary): string {
     }
 
     <footer>
-      LoadScope v0.1.0 &bull; Self-Contained Interactive Benchmark Report &bull; Rendered ${new Date().toUTCString()}
+      LoadScope v1.0.0 &bull; Self-Contained Interactive Benchmark Report &bull; Rendered ${new Date().toUTCString()}
     </footer>
   </div>
 

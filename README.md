@@ -5,7 +5,7 @@
 **A high-performance HTTP load tester with automated breaking-point finder, Coordinated Omission correction, CI performance regression gating, and zero-browser PDF/HTML reports.**
 
 [![CI](https://github.com/shaikafridd/loadscope/actions/workflows/ci.yml/badge.svg)](https://github.com/shaikafridd/loadscope/actions)
-[![npm version](https://img.shields.io/badge/npm-v0.1.0-blue.svg)](https://www.npmjs.com/package/loadscope)
+[![npm version](https://img.shields.io/badge/npm-v1.0.0-blue.svg)](https://www.npmjs.com/package/loadscope)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org/)
@@ -54,7 +54,7 @@ npx loadscope http://localhost:3000/api -c 50 -d 10s --html
 ### 🖥️ Live Terminal Dashboard Experience
 
 ```text
- 🚀 LoadScope v0.1.0  •  Target: http://localhost:3000/api  •  Workers: 4
+ 🚀 LoadScope v1.0.0  •  Target: http://localhost:3000/api  •  Workers: 4
  ────────────────────────────────────────────────────────────────────────
  Throughput:      3,480 req/s    [████████████████████░░░░░░░░░░]  70%
  Active Conns:    50 / 50        Dispatched: 34,800 reqs

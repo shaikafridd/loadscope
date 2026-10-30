@@ -1,6 +1,6 @@
 {
   "name": "loadscope",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "A high-performance HTTP load tester with automated breaking-point finder, Coordinated Omission correction, CI regression gate, and zero-browser PDF/HTML reports",
   "type": "module",
   "bin": {

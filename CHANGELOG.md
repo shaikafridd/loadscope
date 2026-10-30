@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.0] - 2026-10-30
+
+### Added
+- **Multi-Step Scenario Scripting & Synthetic User Journeys (Phase 9)**:
+  - Declarative YAML/JSON scenario DSL for modeling complex multi-step user workflows.
+  - Session context variable extraction from JSON payloads (`json:path`), regular expressions (`regex:pattern`), and HTTP headers (`header:key`).
+  - Runtime variable interpolation (`{{variable}}`) in request paths, headers, and request bodies.
+  - Realistic human think-time simulation (`thinkTime: 250ms`) with high-resolution timers.
+  - Step-by-step waterfall performance breakdown with per-step latency percentiles and error rates.
+- **Production Version 1.0 Milestone**:
+  - Full suite stability across all 13 test suites (63 passing tests).
+  - Verified TypeScript compilation, declaration maps, and ES modules distribution.
+
 ## [0.1.0] - 2026-10-22
 
 ### Added
